@@ -52,6 +52,11 @@ function buildPrompt() {
     - Combine this with parent elements to ensure uniqueness in the DOM.
 
     Provide a query selector for each product info item (title, rating, mrp_price, current_price) so that running it in the DOM console will return the exact text content.
+    
+
+    Your task is to generate unique query selectors only string so that i can put them in document.querySelector(<your_output>).textContent.trim() for each product info to get the content.
+
+    In case of image if I run the querySelector then I should get the url of the image
 
     Return the output in this JSON format:
     {
@@ -59,6 +64,7 @@ function buildPrompt() {
       "current_price": "querySelector_for_current_price",
       "rating": "querySelector_for_rating",
       "title": "querySelector_for_title"
+      "image": "querySelector_for_title"
     }`;
 }
 

@@ -15,7 +15,7 @@ function locateHTMLElements(html, searchText) {
     if (element) {
         function findDeepestElement(el) {
             let current = el;
-            while (current.children.length > 0) {
+            while (current.children.length > 0 &&  Boolean(current.children[0].textContent) && current.children[0].textContent.trim().toLowerCase() === normalizedSearchText) {
                 current = current.children[0];
             }
             return current;
@@ -23,7 +23,6 @@ function locateHTMLElements(html, searchText) {
 
         const deepestElement = findDeepestElement(element);
 
-            // Now go up 5 levels from the deepest element
             const elementsArray = [];
             let currentElement = deepestElement;
 

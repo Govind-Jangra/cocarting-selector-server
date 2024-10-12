@@ -88,10 +88,10 @@ async function main() {
                 
                 const productData = {
                     website_name: new URL(url).hostname,
-                    title: selectors.title,
-                    mrp: selectors.mrp_price,
-                    current: selectors.current_price,
-                    rating: selectors.rating,
+                    title: selectors.title || "N/A",
+                    mrp: selectors.mrp_price || "N/A",
+                    current: selectors.current_price || "N/A",
+                    rating: selectors.rating || "N/A",
                 };
 
                 await storeInMongoDB(productData);

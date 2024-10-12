@@ -22,14 +22,17 @@ async function extractProductInfo(markdownContent) {
     Provide the exact text for each field as they will be used for searching in the HTML. 
     Focus on the main product section area. The required details are:
     Every field is a single line of text and should be extracted exactly as it appears in the markdown content.
+    Price should be extracted as a number with any currency symbols if present.
     - mrp_price 
     - current_price 
     - rating (numeric value only)
     - title (exact title).
+    - img_url (url link for main product)
     Return the result in JSON format with the fields: 
     - mrp_price 
     - current_price 
     - rating 
+    - img_url
     - title.`,
   };
 
