@@ -8,16 +8,23 @@ async function storeInMongoDB(productData) {
             useUnifiedTopology: true,
         });
 
-        const newProduct = new Product({
-            website_name: productData.website_name,
-            title: productData.title,
-            mrp: productData.mrp,
-            current: productData.current,
-            rating: productData.rating,
-        });
+        const updatedProduct = await Product.findOneAndUpdate(
+            { website_name: productData.website_name },  
+            {
+                title: productData.title,
+                mrp: productData.mrp,
+                current: productData.current,
+                rating: productData.rating,
+            },
+            { 
+                new: true,
+                upsert: true,     
+                runValidators: true 
+            }
+        );
 
-        const savedProduct = await newProduct.save();
-        console.log('Data inserted:', savedProduct._id);
+        console.log('Data processed:', updatedProduct._id);
+
     } catch (error) {
         console.error('Error storing data in MongoDB:', error);
     } finally {

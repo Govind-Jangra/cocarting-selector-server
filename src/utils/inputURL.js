@@ -1,3 +1,3 @@
 export const  inputArray = [
-    "https://www.walmart.com/ip/VIZIO-65-Class-4K-UHD-LED-HDR-Smart-TV-New-V4K65M-0804/5197667455"
+    "https://www.snapdeal.com/product/aadi-black-casual-shoes/638773718836"
 ];
