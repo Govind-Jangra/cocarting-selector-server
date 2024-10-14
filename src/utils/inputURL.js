@@ -1,3 +1,3 @@
 export const  inputArray = [
-    "https://www.snapdeal.com/product/aadi-black-casual-shoes/638773718836"
+    "https://www.ajio.com/puma-slim-fit-polo-t-shirt-with-logo-print/p/700357509_black"
 ];

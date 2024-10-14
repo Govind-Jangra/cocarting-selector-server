@@ -62,23 +62,27 @@ async function main() {
                 const rating= productInfo.rating;
                 const mrp_price= productInfo.mrp_price;
                 const current_price= productInfo.current_price;
+                const img= productInfo.img_url;
 
                 const titleElement = locateHTMLElements(html, title);
                 const ratingElement = locateHTMLElements(html, rating);
                 const mrpElement = locateHTMLElements(html, mrp_price);
                 const currentElement = locateHTMLElements(html, current_price);
+                const imgElement = locateHTMLElements(html, img);
 
                 await saveFile('titleElement', JSON.stringify(titleElement, null, 2));
 
                 await saveFile('ratingElement', JSON.stringify(ratingElement, null, 2));
                 await saveFile('mrpElement', JSON.stringify(mrpElement, null, 2));
                 await saveFile('currentElement', JSON.stringify(currentElement, null, 2));
+                await saveFile('imgElement', JSON.stringify(imgElement, null, 2));
                 
                 const selectorObject={
                     "title": titleElement,
                     "rating": ratingElement,
                     "mrp_price": mrpElement,
-                    "current_price": currentElement
+                    "current_price": currentElement,
+                    "image":imgElement
                 }
                 const selectors = await generateQuerySelectors(selectorObject);
                 console.log('Generated Query Selectors:', selectors);
@@ -88,17 +92,86 @@ async function main() {
                 
                 const productData = {
                     website_name: new URL(url).hostname,
-                    title: selectors.title || "N/A",
-                    mrp: selectors.mrp_price || "N/A",
-                    current: selectors.current_price || "N/A",
-                    rating: selectors.rating || "N/A",
-                };
+                    title: (selectors?.title === null ? "N/A" : selectors?.title) || "N/A",
+                    mrp: (selectors?.mrp_price === null ? "N/A" : selectors?.mrp_price) || "N/A",
+                    current: (selectors?.current_price === null ? "N/A" : selectors?.current_price) || "N/A", 
+                    rating: (selectors?.rating === null ? "N/A" : selectors?.rating) || "N/A",
+                    image: (selectors?.image === null ? "N/A" : selectors?.image) || "N/A"  
+                  };
+                  
 
                 await storeInMongoDB(productData);
             }
         }
     }
 };
+
+
+async function firstApproach() {
+    for (const url of inputArray) {
+        const response = await axios.post('http://localhost:5000/html', { url });
+        const html = response.data;
+        if (html) {
+            await saveFile('html', html);
+
+            const markdown = convertToMarkdown(html);
+            await saveFile('markdown', markdown);
+
+            const productInfo = await extractProductInfo(markdown);
+            
+            if (productInfo) {
+                console.log('Extracted Product Info:', productInfo);
+                
+                await saveFile('productinfo', JSON.stringify(productInfo, null, 2));
+
+                const title= productInfo.title;
+                const rating= productInfo.rating;
+                const mrp_price= productInfo.mrp_price;
+                const current_price= productInfo.current_price;
+                const img= productInfo.img_url;
+
+                const titleElement = locateHTMLElements(html, title);
+                const ratingElement = locateHTMLElements(html, rating);
+                const mrpElement = locateHTMLElements(html, mrp_price);
+                const currentElement = locateHTMLElements(html, current_price);
+                const imgElement = locateHTMLElements(html, img);
+
+                await saveFile('titleElement', JSON.stringify(titleElement, null, 2));
+
+                await saveFile('ratingElement', JSON.stringify(ratingElement, null, 2));
+                await saveFile('mrpElement', JSON.stringify(mrpElement, null, 2));
+                await saveFile('currentElement', JSON.stringify(currentElement, null, 2));
+                await saveFile('imgElement', JSON.stringify(imgElement, null, 2));
+                
+                const selectorObject={
+                    "title": titleElement,
+                    "rating": ratingElement,
+                    "mrp_price": mrpElement,
+                    "current_price": currentElement,
+                    "image":imgElement
+                }
+                const selectors = await generateQuerySelectors(selectorObject);
+                console.log('Generated Query Selectors:', selectors);
+                
+                
+                await saveFile('selectors', JSON.stringify(selectors, null, 2));
+                
+                const productData = {
+                    website_name: new URL(url).hostname,
+                    title: (selectors?.title === null ? "N/A" : selectors?.title) || "N/A",
+                    mrp: (selectors?.mrp_price === null ? "N/A" : selectors?.mrp_price) || "N/A",
+                    current: (selectors?.current_price === null ? "N/A" : selectors?.current_price) || "N/A", 
+                    rating: (selectors?.rating === null ? "N/A" : selectors?.rating) || "N/A",
+                    image: (selectors?.image === null ? "N/A" : selectors?.image) || "N/A"  
+                  };
+                  
+
+                await storeInMongoDB(productData);
+            }
+        }
+    }
+};
+
 
 setTimeout(() => {
     main();
