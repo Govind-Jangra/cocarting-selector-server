@@ -1,6 +1,12 @@
 import OpenAI from "openai";
 import fs from "fs";
 import dotenv from 'dotenv';
+import path from "path"
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 dotenv.config();
 
@@ -8,7 +14,12 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY || "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",
 });
 
-async function runHTMLFileSearch(htmlFile) {
+async function runHTMLFileSearch(htmlContent) {
+  console.log("entering....")
+  const fileName = "temp_" + Date.now() + ".html";  
+const filePath = path.join(__dirname, fileName);
+  fs.writeFileSync(filePath, htmlContent, 'utf8');
+
   const assistant = await openai.beta.assistants.create({
     name: "Product Info Extractor",
     instructions: `Objective:
@@ -43,48 +54,33 @@ Important Considerations:
 Generalization: Avoid using overly specific selectors that may not work across all product pages.
 Resilience: Selectors should handle minor changes in the HTML structure.
 Verification: Ensure the selectors accurately target the specific data without capturing nested or irrelevant elements.
+You have to just give me the string part <unique querySelector> so that i can use in dom to extract details document.querySelector('<unique querySelector>').textContent.trim()
 Example Response:
 
 {
-  "productTitle": {
-    "value": "document.querySelector('<unique querySelector>').textContent.trim()",
-    "valid": true
-  },
-  "currentPriceSelector": {
-    "value": "document.querySelector('<unique querySelector>').textContent.trim()",
-    "valid": true
-  },
-  "mrpPriceSelector": {
-    "value": "document.querySelector('<unique querySelector>').textContent.trim()",
-    "valid": true
-  },
-  "ratingSelector": {
-    "value": "document.querySelector('<unique querySelector>').textContent.trim()",
-    "valid": true
-  },
-  "imageSelector": {
-    "value": "document.querySelector('<unique querySelector>').getAttribute('src')",
-    "valid": true
-  }
+  "productTitle": "<unique querySelector>"
+  "currentPriceSelector":"<unique querySelector>"
+  "mrpPriceSelector":"<unique querySelector>"
+  "ratingSelector":"<unique querySelector>"
+  "imageSelector":"<unique querySelector>" 
 }
-Testing and Execution:
-
-Run each querySelector on the provided HTML. If the returned value is correct, set valid: true. If it fails, update the selector and rerun the test until a valid result is obtained.
-You do not need to ask for input during this process. Simply rerun until you get the correct result for each element.`,
+`,
     model: "gpt-4o-mini", 
     tools: [{ type: "file_search" }],
   });
-
   
-  const filePath = "./test.html";
-  const htmlFileStream = fs.createReadStream(filePath);
 
-  const rand=Math.random();
+    const fileStream = fs.createReadStream(filePath);
+   
+  // Create a vector store including our two files.
   let vectorStore = await openai.beta.vectorStores.create({
-    name: "HTML Product Page Store" + rand.toString(),
+    name: "Temp",
   });
+   
+  await openai.beta.vectorStores.fileBatches.uploadAndPoll(vectorStore.id,  {
+    files: [fileStream],
+  })
 
-  await openai.beta.vectorStores.fileBatches.uploadAndPoll(vectorStore.id, [htmlFileStream]);
 
   await openai.beta.assistants.update(assistant.id, {
     tool_resources: { file_search: { vector_store_ids: [vectorStore.id] } },
@@ -94,7 +90,8 @@ You do not need to ask for input during this process. Simply rerun until you get
     messages: [
       {
         role: "user",
-        content: "Let's try to extract data from this file.",
+        content:
+          "Lets try on this file",
       },
     ],
   });
@@ -102,15 +99,65 @@ You do not need to ask for input during this process. Simply rerun until you get
   const run = await openai.beta.threads.runs.createAndPoll(thread.id, {
     assistant_id: assistant.id,
   });
-
+   
   const messages = await openai.beta.threads.messages.list(thread.id, {
     run_id: run.id,
   });
+   
+  const message = messages.data.pop();
+  const res="";
+  if (message.content[0].type === "text") {
+    const { text } = message.content[0];
+    // const { annotations } = text;
+    // const citations = [];
+  
+    // let index = 0;
+    // for (let annotation of annotations) {
+    //   text.value = text.value.replace(annotation.text, "[" + index + "]");
+    //   const { file_citation } = annotation;
+    //   if (file_citation) {
+    //     const citedFile = await openai.files.retrieve(file_citation.file_id);
+    //     citations.push("[" + index + "]" + citedFile.filename);
+    //   }
+    //   index++;
+    // }
+  
+    // console.log(text.value);
 
-  const responseMessage = messages.data.pop();
-  console.log("Extracted Data: ", responseMessage.content);
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: 'system',
+          content: `
+            You are provided with output that is not valid JSON. Your task is to return it in the correct JSON format.
+            Please structure the response as:
+    
+            {
+              "productTitle": "<unique querySelector>",
+              "currentPriceSelector": "<unique querySelector>",
+              "mrpPriceSelector": "<unique querySelector>",
+              "ratingSelector": "<unique querySelector>",
+              "imageSelector": "<unique querySelector>"
+            }
+    
+            Make sure the output is a valid JSON object with the correct syntax and properly escaped quotes. 
+            If the selector is null or undefined do not include in response
+          `
+        },
+        {
+          role: 'user',
+          content: text.value // Pass the variable with the text that needs to be formatted as JSON
+        }
+      ],
+  });
+  fs.unlinkSync(filePath);
+  const selectors = response.choices[0].message.content.trim();
+        return JSON.parse(selectors);
+    // console.log(citations.join("\n"));
+  }
+  
 }
 
-runHTMLFileSearch().catch((error) => {
-  console.error("Error occurred: ", error);
-});
+export default runHTMLFileSearch;

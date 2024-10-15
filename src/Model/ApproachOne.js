@@ -2,11 +2,11 @@ import mongoose from 'mongoose';
 
 const ProductSchema = new mongoose.Schema({
     website_name: { type: String, required: true },
-    title: [{ type: String, required: true }],
-    mrp: [{ type: String, required: true }],
-    current: [{ type: String, required: true }],
-    rating: [{ type: String, required: true }],
-    image: [{ type: String, required: true }],
+    title: { type: [String] },  // Array of strings
+    mrp: { type: [String] },    // Array of strings
+    current: { type: [String] },// Array of strings
+    rating: { type: [String] }, // Array of strings
+    image: { type: [String] },  // Array of strings
 }, { timestamps: true });
 
 const Product = mongoose.model('ApproachOne', ProductSchema);

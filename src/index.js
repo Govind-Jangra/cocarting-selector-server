@@ -4,11 +4,22 @@ import extractProductInfo from './utils/extractProductInfo.js';
 import locateHTMLElements from './utils/locateHTMLElements.js';
 import generateQuerySelectors from './utils/generateQuerySelectors.js';
 import storeInMongoDB from './utils/storeInMongoDB.js';
+import storeInMongoDBFirst from './utils/storeInMongoDBFirst.js';
 import { inputArray } from './utils/inputURL.js';
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 import axios from 'axios';
+import runHTMLFileSearch from './utils/assistantOpenai.js';
+import generateTwoMoreUrl from "./utils/generateTwoMoreUrl.js";
+import connectDB from './config/db.js';
+import express from 'express';
+import cors from "cors"
+connectDB();
+
+const app = express();
+app.use(cors("*"));
+app.use(express.json());
 
 import { fileURLToPath } from 'url';
 
@@ -41,138 +52,85 @@ const saveFile = (filename, content) => {
     });
 };
 
-async function main() {
-    for (const url of inputArray) {
-        const response = await axios.post('http://localhost:5000/html', { url });
-        const html = response.data;
-        if (html) {
-            await saveFile('html', html);
-
-            const markdown = convertToMarkdown(html);
-            await saveFile('markdown', markdown);
-
-            const productInfo = await extractProductInfo(markdown);
-            
-            if (productInfo) {
-                console.log('Extracted Product Info:', productInfo);
-                
-                await saveFile('productinfo', JSON.stringify(productInfo, null, 2));
-
-                const title= productInfo.title;
-                const rating= productInfo.rating;
-                const mrp_price= productInfo.mrp_price;
-                const current_price= productInfo.current_price;
-                const img= productInfo.img_url;
-
-                const titleElement = locateHTMLElements(html, title);
-                const ratingElement = locateHTMLElements(html, rating);
-                const mrpElement = locateHTMLElements(html, mrp_price);
-                const currentElement = locateHTMLElements(html, current_price);
-                const imgElement = locateHTMLElements(html, img);
-
-                await saveFile('titleElement', JSON.stringify(titleElement, null, 2));
-
-                await saveFile('ratingElement', JSON.stringify(ratingElement, null, 2));
-                await saveFile('mrpElement', JSON.stringify(mrpElement, null, 2));
-                await saveFile('currentElement', JSON.stringify(currentElement, null, 2));
-                await saveFile('imgElement', JSON.stringify(imgElement, null, 2));
-                
-                const selectorObject={
-                    "title": titleElement,
-                    "rating": ratingElement,
-                    "mrp_price": mrpElement,
-                    "current_price": currentElement,
-                    "image":imgElement
-                }
-                const selectors = await generateQuerySelectors(selectorObject);
-                console.log('Generated Query Selectors:', selectors);
-                
-                
-                await saveFile('selectors', JSON.stringify(selectors, null, 2));
-                
-                const productData = {
-                    website_name: new URL(url).hostname,
-                    title: (selectors?.title === null ? "N/A" : selectors?.title) || "N/A",
-                    mrp: (selectors?.mrp_price === null ? "N/A" : selectors?.mrp_price) || "N/A",
-                    current: (selectors?.current_price === null ? "N/A" : selectors?.current_price) || "N/A", 
-                    rating: (selectors?.rating === null ? "N/A" : selectors?.rating) || "N/A",
-                    image: (selectors?.image === null ? "N/A" : selectors?.image) || "N/A"  
-                  };
-                  
-
-                await storeInMongoDB(productData);
-            }
-        }
-    }
-};
 
 
 async function firstApproach() {
     for (const url of inputArray) {
+        const res = [];
+        console.log("Processing URL:", url);
+        
+        // Fetch HTML for the current URL
         const response = await axios.post('http://localhost:5000/html', { url });
         const html = response.data;
-        if (html) {
-            await saveFile('html', html);
-
-            const markdown = convertToMarkdown(html);
-            await saveFile('markdown', markdown);
-
-            const productInfo = await extractProductInfo(markdown);
-            
-            if (productInfo) {
-                console.log('Extracted Product Info:', productInfo);
-                
-                await saveFile('productinfo', JSON.stringify(productInfo, null, 2));
-
-                const title= productInfo.title;
-                const rating= productInfo.rating;
-                const mrp_price= productInfo.mrp_price;
-                const current_price= productInfo.current_price;
-                const img= productInfo.img_url;
-
-                const titleElement = locateHTMLElements(html, title);
-                const ratingElement = locateHTMLElements(html, rating);
-                const mrpElement = locateHTMLElements(html, mrp_price);
-                const currentElement = locateHTMLElements(html, current_price);
-                const imgElement = locateHTMLElements(html, img);
-
-                await saveFile('titleElement', JSON.stringify(titleElement, null, 2));
-
-                await saveFile('ratingElement', JSON.stringify(ratingElement, null, 2));
-                await saveFile('mrpElement', JSON.stringify(mrpElement, null, 2));
-                await saveFile('currentElement', JSON.stringify(currentElement, null, 2));
-                await saveFile('imgElement', JSON.stringify(imgElement, null, 2));
-                
-                const selectorObject={
-                    "title": titleElement,
-                    "rating": ratingElement,
-                    "mrp_price": mrpElement,
-                    "current_price": currentElement,
-                    "image":imgElement
-                }
-                const selectors = await generateQuerySelectors(selectorObject);
-                console.log('Generated Query Selectors:', selectors);
-                
-                
-                await saveFile('selectors', JSON.stringify(selectors, null, 2));
-                
-                const productData = {
-                    website_name: new URL(url).hostname,
-                    title: (selectors?.title === null ? "N/A" : selectors?.title) || "N/A",
-                    mrp: (selectors?.mrp_price === null ? "N/A" : selectors?.mrp_price) || "N/A",
-                    current: (selectors?.current_price === null ? "N/A" : selectors?.current_price) || "N/A", 
-                    rating: (selectors?.rating === null ? "N/A" : selectors?.rating) || "N/A",
-                    image: (selectors?.image === null ? "N/A" : selectors?.image) || "N/A"  
-                  };
-                  
-
-                await storeInMongoDB(productData);
+        
+        // Convert HTML to markdown and generate more URLs
+        const markdown = await convertToMarkdown(html);
+        let moreUrls = await generateTwoMoreUrl(markdown, url);
+        moreUrls = moreUrls.moreUrl;
+        
+        console.log("moreUrls", moreUrls);
+        
+        // Use Promise.all() to process both the original URL and the moreUrls in parallel
+        const allUrls = [url, ...moreUrls];
+        const htmlResponses = await Promise.all(
+          allUrls.map(async (tempUrl) => {
+            try {
+              const response = await axios.post('http://localhost:5000/html', { url: tempUrl });
+              const html = response.data;
+              if (html) {
+                console.log(`Processing HTML for URL: ${tempUrl}`);
+                const selector = await runHTMLFileSearch(html);
+                return selector; // Return the extracted selector
+              }
+            } catch (error) {
+              console.error(`Error processing URL: ${tempUrl}`, error);
+              return null; // In case of error, return null
             }
-        }
+          })
+        );
+        
+        // Filter out any null results and push valid selectors to `res`
+        res.push(...htmlResponses.filter((selector) => selector !== null));
+        
+        // Process 'res' as needed (e.g., store or log the results)
+        console.log("Selectors extracted:", res);
+        
+        // Initialize productInfo object
+        const productInfo = {
+          website_name: new URL(url).hostname,
+          title: [],
+          mrp: [],
+          current: [],
+          rating: [],
+          image: []
+        };
+        
+        // Populate productInfo from the res array
+        res.forEach((selectors) => {
+          if (selectors.productTitle) {
+            productInfo.title.push(selectors.productTitle.toString());
+          }
+          if (selectors.currentPriceSelector) {
+            productInfo.current.push(selectors.currentPriceSelector.toString());
+          }
+          if (selectors.mrpPriceSelector) {
+            productInfo.mrp.push(selectors.mrpPriceSelector.toString());
+          }
+          if (selectors.imageSelector) {
+            productInfo.image.push(selectors.imageSelector.toString());
+          }
+          if (selectors.ratingSelector) {
+            productInfo.rating.push(selectors.ratingSelector.toString());
+          }
+        });
+        console.log("productInfo,",productInfo)
+        // Store the productInfo in MongoDB
+        await storeInMongoDBFirst(productInfo);
+        
     }
 };
 
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
 
-setTimeout(() => {
-    main();
-}, 10);
