@@ -4,12 +4,6 @@ import Product from '../Model/ProductModel.js';
 async function storeInMongoDB(productData) {
     try {
         // Attempting to connect to MongoDB
-        await mongoose.connect('mongodb+srv://govind:govind@cluster0.pslgd.mongodb.net/productInfoSelectors', {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
-
-        console.log('Connected to MongoDB successfully.');
 
         // Updating or inserting the product data
         const updatedProduct = await Product.findOneAndUpdate(

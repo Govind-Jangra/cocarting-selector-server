@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
 dotenv.config();
 
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY || "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",
+    apiKey: process.env.OPENAI_API_KEY
 });
 
 async function runHTMLFileSearch(htmlContent) {
