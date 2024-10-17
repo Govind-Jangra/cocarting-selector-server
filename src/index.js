@@ -1,17 +1,13 @@
-import fetchHTML from './utils/fetchHTML.js';
 import convertToMarkdown from './utils/convertToMarkdown.js';
-import extractProductInfo from './utils/extractProductInfo.js';
-import locateHTMLElements from './utils/locateHTMLElements.js';
-import generateQuerySelectors from './utils/generateQuerySelectors.js';
-import storeInMongoDB from './utils/storeInMongoDB.js';
 import storeInMongoDBFirst from './utils/storeInMongoDBFirst.js';
 import generateTwoMoreUrl from "./utils/generateTwoMoreUrl.js";
 import connectDB from './config/db.js';
 import runHTMLFileSearch from './utils/assistantOpenai.js';
-
+import fetchHTML from './utils/fetchHTML.js';
 import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
+import Product from './Model/ApproachOne.js';
 
 connectDB();
 
@@ -27,10 +23,7 @@ async function firstApproach(url) {
     console.log("Processing URL:", url);
     
     // Fetch HTML for the current URL
-    const response = await axios.post(process.env.BACKEND_URL, { url });
-    const html = response.data;
-    
-    // Convert HTML to markdown and generate more URLs
+    const html = await fetchHTML(url);
     const markdown = await convertToMarkdown(html);
     let moreUrls = await generateTwoMoreUrl(markdown, url);
     moreUrls = moreUrls.moreUrl;
@@ -42,8 +35,7 @@ async function firstApproach(url) {
     const htmlResponses = await Promise.all(
       allUrls.map(async (tempUrl) => {
         try {
-          const response = await axios.post(process.env.BACKEND_URL, { url: tempUrl });
-          const html = response.data;
+          const html = await fetchHTML(tempUrl);
           if (html) {
             console.log(`Processing HTML for URL: ${tempUrl}`);
             const selector = await runHTMLFileSearch(html);
@@ -87,7 +79,8 @@ async function firstApproach(url) {
         productInfo.rating.push(selectors.ratingSelector.toString());
       }
     });
-    
+
+    console.log("productinfo",productInfo)
     // Store the productInfo in MongoDB
     await storeInMongoDBFirst(productInfo);
     
@@ -112,6 +105,22 @@ app.post('/product-info', async (req, res) => {
         console.error("Error processing inputUrl:", error);
         return res.status(500).json({ error: "Failed to process the input URL" });
     }
+});
+
+app.post('/selector',async (req,res)=>{
+  try {
+    const { website_name } = req.body;
+
+    const product = await Product.findOne({ website_name: website_name });
+
+    if (product) {
+        return res.status(200).json(product);
+    } else {
+        return res.status(404).json({ message: 'Product not found for the given website.' });
+    }
+} catch (error) {
+    return res.status(500).json({ message: 'Server error', error });
+}
 });
 
 app.get('/', (req, res) => {

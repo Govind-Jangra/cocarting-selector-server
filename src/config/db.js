@@ -5,11 +5,13 @@ dotenv.config();
 
 const connectDB = async () => {
     try {
-        const conn = await mongoose.connect(process.env.MONGO_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true
-        });
-        console.log(`MongoDB Connected: ${conn.connection.host}`);
+        const serverSelectionTimeoutMS = 10000;
+       await mongoose.connect('mongodb+srv://govind:govind@cluster0.pslgd.mongodb.net/productInfoSelectors',{
+        useNewUrlParser: true,
+  useUnifiedTopology: true,
+      
+       });
+       console.log("mongodb connected")
     } catch (error) {
         console.error(`Error connecting to MongoDB:`, error);
     if (error.cause) {

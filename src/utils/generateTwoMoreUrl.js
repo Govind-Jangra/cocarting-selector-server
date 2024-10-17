@@ -3,8 +3,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const openaiApiKey = process.env.OPENAI_API_KEY ;
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: openaiApiKey,
 });
 
 /**
@@ -16,7 +17,7 @@ const openai = new OpenAI({
 async function generateTwoMoreUrl(markdownContent,url) {
   const systemPrompt = {
     role: 'system',
-    content: `You are given the markdown of an e-commerce product page. Based on the product and structure, generate 3 additional URLs similar to the given page ${url}.
+    content: `You are given the markdown content of an e-commerce product page. This page contains multiple links, including links to other product pages on the same e-commerce website. Your task is to extract 3 URLs that specifically link to other product pages on the same domain. The current page’s URL is ${url} —this is also a product page. Please ensure that the URLs you extract are for product pages (not categories, blogs, or other types of pages).
     Return in JSON format:
     {
         "moreUrl": ["url1", "url2", "url3"]
