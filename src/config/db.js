@@ -6,7 +6,7 @@ const mongoUri=process.env.MONGO_URI;
 const connectDB = async () => {
     try {
         const serverSelectionTimeoutMS = 10000;
-       await mongoose.connect(MONGO_URI,{
+       await mongoose.connect(mongoUri,{
         useNewUrlParser: true,
   useUnifiedTopology: true,
       
