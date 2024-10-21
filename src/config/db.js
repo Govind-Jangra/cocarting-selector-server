@@ -2,11 +2,11 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
 dotenv.config(); 
-
+const mongoUri=process.env.MONGO_URI;
 const connectDB = async () => {
     try {
         const serverSelectionTimeoutMS = 10000;
-       await mongoose.connect('mongodb+srv://govind:govind@cluster0.pslgd.mongodb.net/productInfoSelectors',{
+       await mongoose.connect(MONGO_URI,{
         useNewUrlParser: true,
   useUnifiedTopology: true,
       
